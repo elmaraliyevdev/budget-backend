@@ -1,0 +1,46 @@
+version: '3.7'
+
+services:
+  database:
+    restart: always
+    image: postgres:14
+    container_name: postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+    volumes:
+      - ./database:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  backend:
+    container_name: backend
+    restart: always
+    build: backend
+    command: ["flask", "run", "--host=0.0.0.0"]
+    volumes:
+      - ./backend:/backend
+    depends_on:
+      - database
+    environment:
+      - FLASK_APP=app.py
+      - FLASK_ENV=development
+    ports:
+      - "5000:80"
+
+  frontend:
+    build: frontend
+    command: ["npm", "start"]
+    volumes:
+      - ./frontend:/frontend
+      - node-modules:/frontend/node_modules
+    environment:
+      - NODE_ENV=development
+    ports:
+      - 3000:3000
+    depends_on:
+      - backend
+
+volumes:
+  node-modules:

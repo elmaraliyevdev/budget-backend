@@ -1,0 +1,8 @@
+__pycache__
+data.db
+*.pyc
+.DS_Store
+.env
+.idea
+venv
+migrations
