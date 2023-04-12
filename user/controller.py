@@ -39,7 +39,10 @@ def create_user(data: Dict) -> Tuple:
 
 
 def login(email: str, password: str) -> Tuple:
+    print(email, password)
     user = UserModel.query.filter_by(email=email).first()
+
+    print(user)
 
     if user:
 

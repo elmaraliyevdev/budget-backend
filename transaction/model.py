@@ -11,7 +11,7 @@ class TransactionModel(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(80), unique=True, nullable=False)
     category_id = db.Column(db.Integer, db.ForeignKey('categories.id'))
-    category = db.relationship('CategoryModel', lazy=True, foreign_keys=[category_id])
+    category = db.relationship('Category', lazy=True, foreign_keys=[category_id])
     date_created = db.Column(db.Date, nullable=True)
     amount = db.Column(db.Float(precision=2), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id', onupdate='CASCADE', ondelete='CASCADE'), index=True,

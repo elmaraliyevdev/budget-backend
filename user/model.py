@@ -20,8 +20,7 @@ class UserModel(db.Model):
     password = db.Column(db.String(280), nullable=False)
     date_created = db.Column(db.DateTime, nullable=True, default=datetime.utcnow)
     admin = db.Column(db.Boolean, default=False)
-    wallet_id = db.Column(db.Integer, db.ForeignKey('wallets.id'))
-    wallet = db.relationship("WalletModel", backref="user", lazy=True, foreign_keys=[wallet_id])
+    wallet = db.relationship('WalletModel', backref='user', uselist=False)
 
     def encode_auth_token(self, user):
         try:
@@ -53,4 +52,4 @@ class UserSchema(SQLAlchemyAutoSchema):
         include_fk = True
         sqla_session = Session
 
-    wallet = fields.Nested(WalletSchema(only=("id", "name", "currency", "balance", "created_date")))
+    wallet = fields.Nested(WalletSchema)

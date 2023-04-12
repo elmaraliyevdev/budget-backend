@@ -5,6 +5,7 @@ from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 from flask_migrate import Migrate
 from routes import load_routes
+from category.model import GeneralCategory
 
 
 def start_app():
@@ -13,7 +14,7 @@ def start_app():
     # ma = Marshmallow(app)
 
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    app.config["SQLALCHEMY_DATABASE_URI"] = 'postgresql://postgres:postgres@localhost:5432/postgres'
+    app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL") # 'postgresql://postgres:postgres@postgres:5432/postgres'
     app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
 
     jwt = JWTManager(app)
@@ -23,6 +24,23 @@ def start_app():
     from lib.db_lib import db, ma
     db.init_app(app)
     ma.init_app(app)
+
+    def create_default_categories():
+        categories = ['Category 1', 'Category 2']
+
+        for category_name in categories:
+            category = GeneralCategory.query.filter_by(name=category_name).first()
+            if not category:
+                category = GeneralCategory(name=category_name)
+                db.session.add(category)
+
+        db.session.commit()
+
+    @app.before_first_request
+    def init_db():
+        with app.app_context():
+            db.create_all()
+            create_default_categories()
 
     migrate = Migrate(app, db, compare_type=True)
 
@@ -59,5 +77,5 @@ def internal_server_error(e):
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True)
 

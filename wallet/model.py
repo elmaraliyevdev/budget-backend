@@ -12,7 +12,7 @@ class WalletModel(db.Model):
     currency = db.Column(db.String(80), nullable=False)
     balance = db.Column(db.Float(precision=2), nullable=False)
     created_date = db.Column(db.DateTime, nullable=True, default=datetime.utcnow)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
 
 
 class WalletSchema(SQLAlchemyAutoSchema):
