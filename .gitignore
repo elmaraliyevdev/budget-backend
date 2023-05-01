@@ -3,3 +3,6 @@
 db.sqlite3
 receipts
 media
+venv
+**/__pycache__/
+*.pyc

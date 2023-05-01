@@ -1,7 +1,6 @@
 from django.contrib.auth.hashers import make_password
-from rest_framework import status
-from rest_framework.decorators import api_view
-from rest_framework.decorators import permission_classes
+from rest_framework import status, viewsets
+from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
@@ -12,6 +11,69 @@ from .serializers import UserSerializerWithToken, UserSerializer, CategorySerial
 from django.db.models import Q
 from datetime import date, timedelta
 from decimal import Decimal
+from django.db.models import Sum
+
+
+class TransactionViewSet(viewsets.ModelViewSet):
+    serializer_class = TransactionSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        return Transaction.objects.filter(user=user)
+
+    @action(detail=False, methods=['get'])
+    def latest_first(self, request):
+        limit = request.query_params.get('limit', None)
+        queryset = self.get_queryset().order_by('-date')
+        if limit:
+            queryset = queryset[:int(limit)]
+        serializer = TransactionSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def oldest_first(self, request):
+        transactions = self.get_queryset().order_by('date')
+        serializer = TransactionSerializer(transactions, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def search(self, request):
+        query = request.query_params.get('query')
+        transactions = self.get_queryset().filter(
+            Q(description__icontains=query) | Q(category__name__icontains=query) | Q(
+                wallet__name__icontains=query))
+        serializer = TransactionSerializer(transactions, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def by_date_range(self, request):
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
+        transactions = self.get_queryset().filter(date__range=[start_date, end_date])
+        serializer = TransactionSerializer(transactions, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def by_amount_range(self, request):
+        min_amount = request.query_params.get('min_amount', None)
+        max_amount = request.query_params.get('max_amount', None)
+        transactions = self.get_queryset().filter(amount__range=[min_amount, max_amount])
+        serializer = self.get_serializer(transactions, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def by_category(self, request):
+        category_id = request.query_params.get('category_id')
+        transactions = self.get_queryset().filter(category_id=category_id)
+        serializer = TransactionSerializer(transactions, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def by_wallet(self, request):
+        wallet_id = request.query_params.get('wallet_id')
+        transactions = self.get_queryset().filter(wallet_id=wallet_id)
+        serializer = TransactionSerializer(transactions, many=True)
+        return Response(serializer.data)
 
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -165,10 +227,34 @@ def create_wallet(request):
     wallet = Wallet.objects.create(
         user=user,
         name=data['name'],
-        balance=data['balance'],
-        currency=data['currency'],
-        is_default=data['is_default']
+        balance=data['balance']
     )
 
     serializer = WalletSerializer(wallet, many=False)
     return Response(serializer.data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_stats(request):
+    # Calculate total expenses
+    total_expenses = Transaction.objects.filter(transaction_type='expense').aggregate(Sum('amount'))['amount__sum']
+    # Calculate total income
+    total_income = Transaction.objects.filter(transaction_type='income').aggregate(Sum('amount'))['amount__sum']
+    # Calculate total balance
+    total_balance = Wallet.objects.filter(user=request.user).aggregate(Sum('balance'))['balance__sum']
+
+    # Calculate total expenses for last 7 days
+    today = date.today()
+    last_week = today - timedelta(days=7)
+    total_expenses_last_week = \
+    Transaction.objects.filter(transaction_type='expense', date__gte=last_week).aggregate(Sum('amount'))['amount__sum']
+
+    data = {
+        'total_expenses': total_expenses,
+        'total_income': total_income,
+        'total_balance': total_balance,
+        'total_expenses_last_week': total_expenses_last_week
+    }
+
+    return Response(data)
